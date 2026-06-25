@@ -3,7 +3,8 @@
 Centralizes URL, credential, and origin reads so paths through the code
 do not pepper `os.environ[...]` calls.
 """
-from pydantic import BaseSettings, Field
+from pydantic import Field
+from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
