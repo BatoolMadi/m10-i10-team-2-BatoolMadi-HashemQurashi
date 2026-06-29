@@ -1,21 +1,21 @@
 import { test, expect } from '@playwright/test';
 
 test('rag page renders cited answer', async ({ page }) => {
-  // 1. الانتقال إلى صفحة الـ RAG
+  // 1. Navigate to the RAG page
   await page.goto('/rag');
 
-  // 2. إدخال السؤال في حقل النص (استبدل 'input[name="question"]' بالمعرف الفعلي عندك)
+  // 2. Enter the question in the text field (replace 'input[name="question"]' with the actual id)
   await page.fill('input[name="question"]', 'Find Sichuan recipes that use ginger');
-  
-  // 3. النقر على زر الإرسال
+
+  // 3. Click the submit button
   await page.click('button[type="submit"]');
 
-  // 4. الانتظار حتى ظهور الإجابة في الصفحة
-  // افترضنا أن الإجابة تظهر داخل عنصر له الكلاس 'answer-text'
+  // 4. Wait until the answer appears on the page
+  // Assume the answer appears inside an element with class 'answer-text'
   const answerLocator = page.locator('.answer-text');
-  await expect(answerLocator).toBeVisible({ timeout: 20000 }); // زيادة التوقيت لأن الـ AI قد يأخذ وقتاً
+  await expect(answerLocator).toBeVisible({ timeout: 20000 }); // longer timeout because AI may take time
 
-  // 5. التحقق من أن النص يحتوي على مراجع بصيغة [1] أو [N]
+  // 5. Verify the text contains citation markers like [1] or [N]
   const answerText = await answerLocator.textContent();
-  expect(answerText).toMatch(/\[\d+\]/); // هذا تعبير نمطي (Regex) يبحث عن [رقم]
+  expect(answerText).toMatch(/\[\d+\]/); // regex looking for [digit]
 });

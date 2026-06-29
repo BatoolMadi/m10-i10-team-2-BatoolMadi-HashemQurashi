@@ -8,7 +8,7 @@
 
 FROM python:3.11-slim
 
-WORKDIR /app/api
+WORKDIR /app
 
 COPY requirements.txt /app/requirements.txt
 # Generous timeout + retries for transient PyPI mirror flakes on first-pull
@@ -26,5 +26,5 @@ RUN pip install --no-cache-dir --timeout 300 --retries 5 \
 COPY . /app
 
 EXPOSE 8000
-
+    
 CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]
