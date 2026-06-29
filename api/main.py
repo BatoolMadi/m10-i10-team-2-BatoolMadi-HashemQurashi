@@ -10,7 +10,8 @@ Discipline gates the autograder enforces:
   within 2 seconds; failure → 503.
 - `/healthz` does NOT touch Neo4j or Weaviate.
 """
-import os
+import sys
+import traceback
 from contextlib import asynccontextmanager
 
 import spacy
@@ -18,6 +19,7 @@ import weaviate
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from neo4j import GraphDatabase
+from pydantic import ValidationError
 from sentence_transformers import SentenceTransformer
 
 from .deps import get_embedder, get_generator, get_nlp, get_session, get_weaviate
@@ -35,23 +37,72 @@ from .models import (
 )
 from .nlp import extract_entities
 from .rag import compose_rag
+from .settings import Settings
 from .w9b_mapper.errors import UnsupportedQueryError
 from .w9b_mapper.shapes import SUPPORTED_PATTERNS
 
 
+settings_cache: Settings | None = None
+
+
+def load_settings() -> Settings:
+    global settings_cache
+    if settings_cache is None:
+        try:
+            settings_cache = Settings()
+        except ValidationError as exc:
+            raise EnvironmentError(
+                "Missing or invalid environment configuration for API startup: "
+                + "; ".join(err["msg"] for err in exc.errors())
+            ) from exc
+    return settings_cache
+
+
+def _startup_step(label: str, fn):
+    """Temporary CI diagnostic — remove after root cause found."""
+    print(f"[startup] BEFORE {label}", flush=True)
+    try:
+        result = fn()
+        print(f"[startup] AFTER {label}", flush=True)
+        return result
+    except Exception:
+        print(f"[startup] FAILED {label}", file=sys.stderr, flush=True)
+        traceback.print_exc(file=sys.stderr)
+        raise
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    app.state.neo4j_driver = GraphDatabase.driver(
-        os.environ["NEO4J_URI"],
-        auth=(os.environ["NEO4J_USER"], os.environ["NEO4J_PASSWORD"]),
+    print("[startup] lifespan entered", flush=True)
+
+    settings = _startup_step("load_settings()", load_settings)
+
+    app.state.neo4j_driver = _startup_step(
+        "Neo4j init",
+        lambda: GraphDatabase.driver(
+            settings.neo4j_uri,
+            auth=(settings.neo4j_user, settings.neo4j_password),
+        ),
     )
-    app.state.weaviate_client = weaviate.Client(os.environ["WEAVIATE_URL"])
-    app.state.nlp = spacy.load("en_core_web_sm")
-    app.state.generator = load_generator()
+    app.state.weaviate_client = _startup_step(
+        "Weaviate init",
+        lambda: weaviate.Client(settings.weaviate_url),
+    )
+    app.state.nlp = _startup_step(
+        "spacy.load()",
+        lambda: spacy.load("en_core_web_sm"),
+    )
+    app.state.generator = _startup_step("load_generator()", load_generator)
     # Same sentence-transformers model the seed used at ingest. The
     # Weaviate class is `vectorizer=none`, so /rag/answer encodes the
     # query externally and queries via `with_near_vector`.
-    app.state.embedder = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+    app.state.embedder = _startup_step(
+        "SentenceTransformer()",
+        lambda: SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2"),
+    )
+    app.state.settings = settings
+
+    print("[startup] lifespan startup complete — yielding", flush=True)
     yield
     app.state.neo4j_driver.close()
 
@@ -59,7 +110,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="M10 Recipe Service", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[os.environ.get("WEB_ORIGIN", "http://localhost:3000")],
+    allow_origins=[load_settings().web_origin],
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -125,3 +176,6 @@ def readyz(
     if detail["neo4j"] != "ok" or detail["weaviate"] != "ok":
         raise HTTPException(status_code=503, detail=detail)
     return detail
+
+
+print("[startup] api.main module import complete", flush=True)

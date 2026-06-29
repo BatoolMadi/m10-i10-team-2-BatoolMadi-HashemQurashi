@@ -48,6 +48,9 @@ curl -s -X POST http://localhost:8000/rag/answer \
   -d '{"question": "How do I prep ginger for stir-fry?"}' | jq .
 
 # Open the web UI at http://localhost:3000/rag
+
+# Tear down the stack
+docker compose down -v
 ```
 
 ## Submission
