@@ -3,6 +3,6 @@ set -euo pipefail
 
 echo "Seeding Weaviate..."
 
-docker compose exec -T api python seed_weaviate.py
+docker compose exec -T api python api/seed_weaviate.py
 
 echo "Weaviate seed complete."
