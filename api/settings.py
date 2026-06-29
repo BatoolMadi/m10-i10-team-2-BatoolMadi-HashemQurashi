@@ -4,7 +4,7 @@ Centralizes URL, credential, and origin reads so paths through the code
 do not pepper `os.environ[...]` calls.
 """
 from pydantic import Field
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -20,6 +20,8 @@ class Settings(BaseSettings):
     weaviate_url: str = Field("http://localhost:8080", env="WEAVIATE_URL")
     web_origin: str = Field("http://localhost:3000", env="WEB_ORIGIN")
 
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
