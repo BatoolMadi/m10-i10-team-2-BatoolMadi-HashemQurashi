@@ -7,34 +7,38 @@ This file is the team roster artifact for the Module 10 four-service Docker Comp
 - **Team name:** team-4
 - **Team Slack channel:** #m10-team-4
 - **Team-formation date:** 2026-06-24
-- **Designated team submitter:** Hashem (Backend & Infra-Integration lead)
-
+- **Designated team submitter:** Hashem
 ---
 
 ## Team Roster
 
-| Role | Team Member identifier | Assigned by | Branch | Internal-PR reviewer | Primary files owned |
-|---|---|---|---|---|---|
-| Backend & Infra-Integration lead | Hashem | Instructional team | `main` | Batool | `api/*`, `docker-compose.yml`, `scripts/*`, `tests/integration/*` |
-| Frontend lead | Batool | Instructional team | `frontend/nextjs-pages` | Hashem | `web/*`, `tests/frontend/playwright/*` |
-
+| Role | Team Member identifier | Branch |
+|---|---|---|
+| Backend Lead | Hashem | `backend/api-endpoints` |
+| Frontend Lead | Batool | `frontend/nextjs-pages` |
+| Infra-Integration | Shared (Batool + Hashem) | `infra/docker-compose` |
 ---
 
 ## Per-Role File Checklist
 
-### Backend & Infra-Integration lead
+### Backend lead
 
-- [x] `api/main.py` — path operations, `lifespan`, CORS middleware
-- [x] `api/models.py` — Pydantic shapes
-- [x] `api/rag.py` — RAG composer with grounding contract
-- [x] `api/deps.py` — `Depends()` functions
-- [x] `api/Dockerfile` — single-stage Python
-- [x] `docker-compose.yml` — four services, healthchecks, `depends_on` chain, named volumes
-- [x] `seed_neo4j.sh`
-- [x] `seed_weaviate.sh`
-- [x] `.env.example`
-- [x] `README.md` runbook
-- [x] `tests/integration/test_stack_e2e.py`
+* [x] `api/main.py`
+* [x] `api/models.py`
+* [x] `api/rag.py`
+* [x] `api/deps.py`
+* [x] `api/Dockerfile`
+
+### Infra-Integration (Shared: Batool + Hashem)
+
+* [x] `docker-compose.yml`
+* [x] `scripts/seed_neo4j.sh`
+* [x] `scripts/seed_weaviate.sh`
+* [x] `scripts/healthcheck_stack.sh`
+* [x] `.env.example`
+* [x] `README.md`
+* [x] `tests/integration/test_stack_e2e.py`
+
 
 ### Frontend lead
 
@@ -68,4 +72,4 @@ This file is the team roster artifact for the Module 10 four-service Docker Comp
 
 ## Submission
 
-All role branches merged to the team fork's `main` and `docker compose up -d` smoke passes locally for all team members.
+All assigned role branches (`backend/api-endpoints`, `frontend/nextjs-pages`, `infra/docker-compose`) have been completed and merged into the team fork's main branch. All team members verified `docker compose up -d` and end-to-end stack health successfully.
