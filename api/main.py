@@ -10,6 +10,8 @@ Discipline gates the autograder enforces:
   within 2 seconds; failure → 503.
 - `/healthz` does NOT touch Neo4j or Weaviate.
 """
+import sys
+import traceback
 from contextlib import asynccontextmanager
 
 import spacy
@@ -56,22 +58,51 @@ def load_settings() -> Settings:
     return settings_cache
 
 
+def _startup_step(label: str, fn):
+    """Temporary CI diagnostic — remove after root cause found."""
+    print(f"[startup] BEFORE {label}", flush=True)
+    try:
+        result = fn()
+        print(f"[startup] AFTER {label}", flush=True)
+        return result
+    except Exception:
+        print(f"[startup] FAILED {label}", file=sys.stderr, flush=True)
+        traceback.print_exc(file=sys.stderr)
+        raise
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    settings = load_settings()
+    print("[startup] lifespan entered", flush=True)
 
-    app.state.neo4j_driver = GraphDatabase.driver(
-        settings.neo4j_uri,
-        auth=(settings.neo4j_user, settings.neo4j_password),
+    settings = _startup_step("load_settings()", load_settings)
+
+    app.state.neo4j_driver = _startup_step(
+        "Neo4j init",
+        lambda: GraphDatabase.driver(
+            settings.neo4j_uri,
+            auth=(settings.neo4j_user, settings.neo4j_password),
+        ),
     )
-    app.state.weaviate_client = weaviate.Client(settings.weaviate_url)
-    app.state.nlp = spacy.load("en_core_web_sm")
-    app.state.generator = load_generator()
+    app.state.weaviate_client = _startup_step(
+        "Weaviate init",
+        lambda: weaviate.Client(settings.weaviate_url),
+    )
+    app.state.nlp = _startup_step(
+        "spacy.load()",
+        lambda: spacy.load("en_core_web_sm"),
+    )
+    app.state.generator = _startup_step("load_generator()", load_generator)
     # Same sentence-transformers model the seed used at ingest. The
     # Weaviate class is `vectorizer=none`, so /rag/answer encodes the
     # query externally and queries via `with_near_vector`.
-    app.state.embedder = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+    app.state.embedder = _startup_step(
+        "SentenceTransformer()",
+        lambda: SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2"),
+    )
     app.state.settings = settings
+
+    print("[startup] lifespan startup complete — yielding", flush=True)
     yield
     app.state.neo4j_driver.close()
 
@@ -145,3 +176,6 @@ def readyz(
     if detail["neo4j"] != "ok" or detail["weaviate"] != "ok":
         raise HTTPException(status_code=503, detail=detail)
     return detail
+
+
+print("[startup] api.main module import complete", flush=True)
