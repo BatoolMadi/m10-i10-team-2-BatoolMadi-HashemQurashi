@@ -10,7 +10,7 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-COPY api/requirements.txt /app/requirements.txt
+COPY requirements.txt /app/requirements.txt
 # Generous timeout + retries for transient PyPI mirror flakes on first-pull
 # large wheels (torch, transformers, sentence-transformers, ~2GB total).
 RUN pip install --no-cache-dir --timeout 300 --retries 5 -r /app/requirements.txt
@@ -23,8 +23,8 @@ RUN pip install --no-cache-dir --timeout 300 --retries 5 -r /app/requirements.tx
 RUN pip install --no-cache-dir --timeout 300 --retries 5 \
     https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1-py3-none-any.whl
 
-COPY api/ /app/api/
+COPY . /app
 
 EXPOSE 8000
-
+    
 CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]
